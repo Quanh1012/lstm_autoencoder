@@ -1,0 +1,10 @@
+batch_size: 128
+l_win: 120
+lr: 0.001
+d_model: 20000
+d_hidden: 256
+num_layers: 2
+dropout: 0.1
+num_epoch: 100
+data_dir_buzz1: /home/quanhhh/Documents/QAnh/pickle/
+result_dir: /home/quanhhh/Documents/QAnh/results/
