@@ -5,47 +5,44 @@ import pandas as pd
 import logging
 from dataloader import CustomDataset
 from torch.utils.data.dataloader import DataLoader
-from lstm_Autoencoder import Lstm_autoencoder, Fully_connected
-from autoencoder_trainer import AutoencoderTrainer
+from model_ import Conv_lstm
 from trainer_classification import ClassificationTrainer
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") #"cuda:0" if torch.cuda.is_available() else 
 
     
 config = {'data_dir': 'pickle/',
-          'l_win': 120,
-          'num_epoch': 10,
-          'd_model': 20000,
-          'd_hidden': 256,
-          'num_layers': 2,
+          'num_epoch': 100,
+          'd_hidden': 3,
+          'num_layers': 3,
           'batch_size': 128,
-          'result_dir': '/home/quanhhh/Documents/QAnh/results/'}
+          'num_filters': 64,
+          'kernel_size': 80,
+          'stride': (4,1),
+          'result_dir': '/home/quanh/Documents/quanh/results/',
+          'lr': 0.001,
+          'weight_decay': 0.0001
+          }
 
-train_set = CustomDataset(config)
-train_dataloader = DataLoader(train_set, 
+data_set = CustomDataset(config)
+lenght_data = data_set.get_lenght()
+data_dataloader = DataLoader(data_set, 
                               batch_size = 128,
                               shuffle = True)
-val_set = CustomDataset(config, mode='validate')
-
-val_dataloader = DataLoader(val_set,
-                            batch_size = 128,
-                            shuffle = True)
-
-autoencoder_model = Lstm_autoencoder(20000, 256, 2, 0.1)
-autoencoder_model.float()
-autoencoder_trainer = AutoencoderTrainer(autoencoder_model,
-                                         train_data=train_dataloader,
-                                         val_data=val_dataloader,
-                                         device=device,
-                                         config=config)
-autoencoder_trainer.train()
-config = autoencoder_trainer.get_updated_config()
-
+train_dataloader = []
+val_dataloader = []
+for i, batch in enumerate(data_dataloader):
+    if i < len(data_dataloader)*0.7:
+        train_dataloader.append(batch)
+    else:
+        val_dataloader.append(batch)
+# val_dataloader = DataLoader(val_set,
+#                             batch_size = 128,
+#                             shuffle = True)
 ###
-classification_model = Fully_connected(20000, 256, 0.1)
+classification_model = Conv_lstm(20000, config['num_filters'], config['kernel_size'], config['stride'], config['d_hidden'], config['num_layers'])
 classification_model.float()
-classification_trainer = ClassificationTrainer(autoencoder_model=autoencoder_model,
-                                               fc_function=classification_model,
+classification_trainer = ClassificationTrainer(model=classification_model,
                                                train_data=train_dataloader,
                                                val_data=val_dataloader,
                                                device=device,

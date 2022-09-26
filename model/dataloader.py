@@ -10,14 +10,14 @@ class CustomDataset(Dataset):
         self.load_dataset()
     
     def __len__(self):
-        return self.rolling_windown_data.shape[0]
+        return self.data_.shape[0]
     
     def __getitem__(self, index):
         if self.mode == 'test':
-            return self.rolling_windown_data[index]
+            return self.data_[index]
         else:
-            return {'input':self.rolling_windown_data[index], 
-                    'labels': self.rolling_windown_labels[index]}
+            return {'input':self.data_[index], 
+                    'labels': self.labels[index]}
     
     def load_dataset(self):
         data = {}
@@ -26,27 +26,28 @@ class CustomDataset(Dataset):
                 data['train'] = f['data']
                 data['labels'] = f['labels']
             
-            train = np.squeeze(data['train'])
-            train_split = self.split_data(train)
-            self.rolling_windown_data = np.lib.stride_tricks.sliding_window_view(train_split, self.config['l_win'], axis = 0, writeable = True).transpose(0,2,1)
+            self.data_ = data['train'].transpose(0,2,1)
+            # self.data_ = self.split_data(train)
+            # self.rolling_windown_data = np.lib.stride_tricks.sliding_window_view(train_split, self.config['l_win'], axis = 0, writeable = True).transpose(0,2,1)
 
-            labels = np.squeeze(data['labels'])
-            labels_split = self.split_data(labels)
-            self.rolling_windown_labels= np.lib.stride_tricks.sliding_window_view(labels_split, self.config['l_win'], axis = 0, writeable = True).transpose(0,2,1)
+            self.labels = data['labels']
+            # self.rolling_windown_labels= np.lib.stride_tricks.sliding_window_view(labels_split, self.config['l_win'], axis = 0, writeable = True).transpose(0,2,1)
         else:
             with np.load('pickle/buzz1_test_data.npz', 'rb') as f:
                 data = f['data']
             
-            test = np.squeeze(data)
-            self.rolling_windown_data = np.lib.stride_tricks.sliding_window_view(test, self.config['l_win'], axis = 0, writeable = True).transpose(0,2,1)
-
+            self.data_ = data.tranpose(0,2,1)
+            # self.rolling_windown_data = np.lib.stride_tricks.sliding_window_view(test, self.config['l_win'], axis = 0, writeable = True).transpose(0,2,1)
+        self.lenght = len(self.data_)
+    def get_lenght(self):
+        return self.lenght
             
     
-    def split_data(self, data):
-        if self.mode == 'train':
-            data = data[: int(data.shape[0]*0.7), :]
-        elif self.mode == 'validate':
-            data = data[int(data.shape[0]*0.7):, :]
-        return data  
+    # def split_data(self, data):
+    #     if self.mode == 'train':
+    #         data = data[: int(data.shape[0]*0.7), :]
+    #     elif self.mode == 'validate':
+    #         data = data[int(data.shape[0]*0.7):, :]
+    #     return data  
         
             

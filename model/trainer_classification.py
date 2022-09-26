@@ -7,18 +7,16 @@ from torch import optim
 import time
 
 class ClassificationTrainer():
-    def __init__(self, autoencoder_model, fc_function, train_data, val_data, device, config):
-        self.model = fc_function
-        if autoencoder_model is not None:
-            self.encoder = autoencoder_model.encoder
-            self.encoder.eval()
+    def __init__(self, model, train_data, val_data, device, config):
+        self.model = model
+    
         self.train_data = train_data
         self.val_data = val_data
         self.device = device
         self.config = config
         self.min_loss = float('inf')
         self.train_loss_list = list()
-        self.val_losss_list = list()
+        self.val_loss_list = list()
         self.train_acc_list = list()
         self.val_acc_list = list()
         self.best_epoch = 0
@@ -27,32 +25,46 @@ class ClassificationTrainer():
         train_loss = 0.0
         train_acc = 0.0
         self.model.train()
-        
+        lenght = 0
+        print('Training epoch: ', epoch)
         for i, data in enumerate(self.train_data):
-            input = data['input'].float().to(self.device)
-            
-            h1, h2, h3 = self.encoder.init_hidden(self.config['d_hidden'], len(data))
-            input = self.encoder(input, h1,h2,h3)
-            
+            input = data['input'].float().to(self.device)            
             target = data['labels'].float().to(self.device)
             out = self.model(input)
             
-            classes = np.argmax(out, axis=1)
-            target_ = np.argmax(target, axis=1)
-            
-            train_acc += np.sum(classes == target_)
+            # classes = torch.argmax(out, axis=1)
+            # target_ = torch.argmax(target, axis=1)
+            #print(classes, target_)
+            # train_acc += torch.sum(classes == target_)
+            lenght += len(input)
             opt.zero_grad()
             loss = criterion(out, target)
             loss.backward()
             opt.step()
             train_loss += loss.item()
+            # print('\rEpoch: {}\t| Train_loss: {:.6f}\t|Train accuracy: {:.6f}'.format(epoch, train_loss/lenght, train_acc/lenght), end='')
         
-        train_loss = train_loss/len(self.train_data)
-        train_acc = train_acc/len(self.train_data)
+        self.model.eval()
+        with torch.no_grad():
+            for i, data in enumerate(self.train_data):
+                input = data['input'].float().to(self.device)            
+                target = data['labels'].float().to(self.device)
+                
+                out = self.model(input)
+                
+                classes = torch.argmax(out, axis=1)
+                target_ = torch.argmax(target, axis=1)
+                #print(classes, target_)
+                train_acc += torch.sum(classes == target_)
+        train_loss = train_loss/lenght
+        train_acc = train_acc/lenght
         self.train_loss_list.append(train_loss)
         self.train_acc_list.append(train_acc)
         
-        logging.info('Epoch: {}\t| Train_loss: {:.6f}\t|Train accuracy: {:.6f}'.format(epoch, train_loss, train_acc))
+        if train_acc > 0.995:
+            path = self.config['result_dir'] + 'model_' + str(self.config['num_layers']) + '_num_layers_' + str(self.config['num_filters']) +'_filters_epoch_' + str(epoch) + '.pt'
+            torch.save(self.model.state_dict(), path)
+        print('\nEpoch: {}\t| Train_loss: {:.6f}\t|Train accuracy: {:.6f}'.format(epoch, train_loss, train_acc))
         if self.val_data is None:
             if train_loss < self.min_loss:
                 self.min_loss = train_loss
@@ -63,65 +75,66 @@ class ClassificationTrainer():
     def validate_epoch(self, criterion, opt, epoch):
         val_loss = 0.0
         val_acc = 0.0
+        lenght = 0
         self.model.eval()
         with torch.no_grad():
             for i, data in enumerate(self.val_data):
-                input = data['input'].float()
-                input = input.to(self.device)
-                h1, h2, h3 = self.encoder.init_hidden(self.config['d_hidden'], len(data['input']))
-                input = self.encoder(input, h1,h2,h3)
+                input = data['input'].float().to(self.device)
+                target = data['labels'].float().to(self.device)
                 
-                target = data['labels'].float()
-                target = target.to(self.device)
                 out = self.model(input)
-                
-                classes = np.argmax(out, axis=1)
-                target_ = np.argmax(target, axis=1)
-                val_acc += np.sum(classes == target_)
+                # print(out)
+                lenght += len(input)
+                classes = torch.argmax(out, axis=1)
+                # print('\n', classes, '\n')
+                #print(classes)
+                target_ = torch.argmax(target, axis=1)
+                # print('\n', target_, '\n')
+                #print(target_)
+                val_acc += torch.sum(classes == target_)
                 loss = criterion(out, target)
                 val_loss += loss.item()
-            
-            val_loss = val_loss/len(self.val_data)
-            val_acc = val_acc/len(self.val_data)
-            self.val_losss_list.append(val_loss)
-            self.val_acc_list.append(val_acc)
-            logging.info('Epoch: {}\t| Validation_loss: {:.6f}\t|Valdation accuracy: {:.6f}'.format(epoch, val_loss, val_acc)) 
-            
-            if val_loss < self.min_loss:
-                self.min_loss = val_loss
-                self.best_epoch = epoch
+        val_loss = val_loss/lenght
+        val_acc = val_acc/lenght
+        self.val_loss_list.append(val_loss)
+        self.val_acc_list.append(val_acc)
+        print('\nEpoch: {}\t| Validation_loss: {:.6f}\t|Valdation accuracy: {:.6f}'.format(epoch, val_loss, val_acc)) 
+        
+        if val_loss < self.min_loss:
+            self.min_loss = val_loss
+            self.best_epoch = epoch
             
     def train(self):
         self.model.to(self.device)  
-        self.encoder.to(self.device)
         
         start = time.perf_counter()
-        model_opt = optim.Adam(self.model.parameters())
+        model_opt = optim.Adam(self.model.parameters(), self.config['lr'], weight_decay = self.config['weight_decay'])
         criterion = nn.CrossEntropyLoss()
-        logging.info("-----START TRAINING CLASSIFICATION-----")
+        print("-----START TRAINING CLASSIFICATION-----")
         for epoch in range(1, self.config['num_epoch'] + 1):
             self.train_epoch(criterion, model_opt, epoch)  
-        logging.info("----COMPLETED TRAINING CLASSIFICATION-----")
+        print("----COMPLETED TRAINING CLASSIFICATION-----")
         self.config["best_epoch"] = self.best_epoch
+        torch.save(self.model.state_dict(), self.config['result_dir'] + 'model_3_num_layers_64_filters.pt')
         self.save_loss()
     
     def save_loss(self):
         if self.val_data is not None:
-            df_loss = pd.DataFrame([i+1, self.train_loss_list[i], self.val_loss_list[i]] for i in range(len(self.train_loss_list)))
-            df_loss.save(self.config['result_dir'] + 'classification_epoch_loss.csv', 
-                         index=False, 
-                         header=['Epoch', 'Train_loss', 'Validation_loss'])
+            df_loss = pd.DataFrame([i+1, self.train_loss_list[i], self.train_acc_list[i], self.val_loss_list[i],  self.val_acc_list[i]] for i in range(len(self.train_loss_list)))
+            df_loss.to_csv(self.config['result_dir'] + 'classification_epoch_loss_3_num_layers_128_filters.csv', 
+                           header=['Epoch', 'Train_loss', 'Train_acc', 'Validation_loss', 'Validation_acc'],
+                           index=False)
         else:
-            df_loss = pd.DataFrame([i+1, self.train_loss_list[i]] for i in range(len(self.train_loss_list)))
-            df_loss.save(self.config['result_dir'] + 'classification_epoch_loss.csv', 
-                         index=False, 
-                         header=['Epoch', 'Train_loss'])
+            df_loss = pd.DataFrame([i+1, self.train_loss_list[i], self.train_acc_list[i]] for i in range(len(self.train_loss_list)))
+            df_loss.to_csv(self.config['result_dir'] + 'classification_epoch_loss_3_num_layers_128_filters.csv', 
+                         header=['Epoch', 'Train_loss', 'Train_acc'],
+                         index=False)
            
     def get_updated_config(self):
         return self.config
     
     def load_model(self, path = None):
         if path is None:
-            path = self.config['result_dir'] + "autoencoder+model.pt"
+            path = self.config['result_dir'] + "model.pt"
         self.model.load_state_dict(torch.load(path))
         self.model.eval()        
