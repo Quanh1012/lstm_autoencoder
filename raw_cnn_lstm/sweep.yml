@@ -1,0 +1,59 @@
+method: bayes
+metric:
+  goal: maximize
+  name: val_acc
+parameters:
+  batch_size:
+    value: 128
+  d_hidden:
+    value: 3
+  kernel_size_1:
+    distribution: int_uniform
+    min: 50
+    max: 100
+  kernel_size_2:
+    distribution: int_uniform
+    min: 3
+    max: 11
+  maxpool_1:
+    distribution: int_uniform
+    min: 3
+    max: 8
+  maxpool_2:
+    distribution: int_uniform
+    min: 3
+    max: 8
+  stride_1:
+    distribution: int_uniform
+    min: 3
+    max: 13
+  stride_2:
+    distribution: int_uniform
+    min: 3
+    max: 13
+  num_epoch:
+    value: 100
+  num_filters:
+    distribution: int_uniform
+    min: 16
+    max: 64
+  num_layers:
+    distribution: int_uniform
+    min: 2
+    max: 4
+  lr:
+    distribution: log_uniform_values
+    min: 0.0001
+    max: 0.005
+  weight_decay:
+    distribution: log_uniform_values
+    min: 0.0001
+    max: 0.0003
+  dropout:
+    distribution: uniform
+    min: 0.1
+    max: 0.2
+  data_dir: 
+    value: '/home/quanhhh/Documents/model/pickle/'
+  result_dir: 
+    value: '/home/quanhhh/Documents/model/result_wandb/'
