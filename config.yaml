@@ -1,0 +1,17 @@
+batch_size: 128
+best_epoch: 89
+best_model_path: /home/quanhhh/Documents/model/model_spec/result_wb/buzz2_model_3num_layers_(22,29)filters_(5,5)kernel_size_(3,6)maxpool_0.003282927756689084lr_89epoch_128batch_size.pt
+d_hidden: 3
+data_dir: /home/quanhhh/Documents/model/data_dir/
+dropout: 0.5536163147910546
+kernel_size_1: 5
+kernel_size_2: 5
+lr: 0.003282927756689084
+maxpool_1: 3
+maxpool_2: 6
+num_epoch: 100
+num_filters_1: 22
+num_filters_2: 29
+num_layers: 3
+result_dir: /home/quanhhh/Documents/model/model_spec/result_wb/
+weight_decay: 0.00018659447334119103
